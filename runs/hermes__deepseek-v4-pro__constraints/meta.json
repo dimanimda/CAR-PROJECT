@@ -1,0 +1,16 @@
+{
+  "run": "hermes__deepseek-v4-pro__constraints",
+  "harness": "hermes",
+  "model": "deepseek-v4-pro",
+  "approach": "constraints",
+  "prompt_file": "prompts/02-constraints.md",
+  "date": "2026-06-25",
+  "method": "single-pass, implemented the exact numeric constraints from the prompt (horizon 0.72H, 4 layers @ 0.10/0.30/0.60/1.00, car 0.28W@0.45W, bob sin(t*2.5)*2, sun @0.72W)",
+  "iterations": 1,
+  "gen_time_sec": null,
+  "console": "0 entries (BrowserOS page 6 totalCount 0) — no JS errors/warnings.",
+  "auto_score": 10,
+  "parallax_layers": 4,
+  "layer_factors": {"hills": 0.10, "treeline": 0.30, "poles": 0.60, "road": 1.0},
+  "notes": "Constraints-driven: exactly 4 layers with prescribed factors, prescribed proportions and bob. Most deterministic vs spec. Seam code-verified (modulo per layer)."
+}

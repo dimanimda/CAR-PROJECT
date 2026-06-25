@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Driving — sunset (constraints)</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #14101c; }
+  #c { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+/* Approach: constraints. Implements the prompt's explicit numbers verbatim:
+   horizon at 0.72H; exactly 4 parallax layers (hills 0.10, treeline 0.30, poles 0.60 @~220px, road 1.00);
+   car width 0.28W centered at 0.45W; wheels angle += groundSpeed*dt/wheelRadius;
+   body bob sin(t*2.5)*2px; sun disc at 0.72W near horizon; sunset gradient (deep orange->pink->dusky blue). */
+(() => {
+  "use strict";
+  const cv = document.getElementById("c");
+  const ctx = cv.getContext("2d");
+  let W, H, DPR = Math.min(window.devicePixelRatio || 1, 2);
+  function resize() {
+    W = innerWidth; H = innerHeight;                      // canvas = innerWidth/innerHeight
+    cv.width = W * DPR; cv.height = H * DPR;
+    cv.style.width = W + "px"; cv.style.height = H + "px";
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  addEventListener("resize", resize); resize();
+
+  const rnd = n => { const x = Math.sin(n * 57.31 + 13.7) * 91801.4; return x - Math.floor(x); };
+  const GROUND = 150;                                      // px/sec reference (factor 1.00)
+  let t = 0;
+  const off = f => t * GROUND * f;
+
+  // exactly four layers, with the specified factors
+  const HILLS = 0.10, TREELINE = 0.30, POLES = 0.60, ROAD = 1.00;
+
+  function sky(hz) {                                       // vertical gradient, sunset palette
+    const g = ctx.createLinearGradient(0, 0, 0, hz);
+    g.addColorStop(0.00, "#243a63");   // dusky blue (top)
+    g.addColorStop(0.45, "#6b4a72");
+    g.addColorStop(0.72, "#c76a6a");   // warm pink
+    g.addColorStop(1.00, "#e8742e");   // deep orange (horizon)
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, hz);
+    const sx = W * 0.72, sy = hz - H * 0.05, r = H * 0.075; // sun disc near horizon, at 0.72W
+    const gl = ctx.createRadialGradient(sx, sy, r * 0.4, sx, sy, r * 5);
+    gl.addColorStop(0, "rgba(255,230,170,0.6)"); gl.addColorStop(1, "rgba(255,230,170,0)");
+    ctx.fillStyle = gl; ctx.fillRect(0, 0, W, hz);
+    ctx.fillStyle = "#fff0c2"; ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7); ctx.fill();
+  }
+
+  // layer 1 — distant hills, factor 0.10, tiled (drawn across full width, wraps via modulo)
+  function hills(hz) {
+    const o = off(HILLS), seg = 80, s = Math.floor(o / seg);
+    ctx.fillStyle = "#4a3a5e"; ctx.beginPath(); ctx.moveTo(-seg, hz);
+    for (let k = -1; k < W / seg + 2; k++) {
+      const i = s + k, x = i * seg - o, h = (rnd(i) + rnd(i * 0.5 + 1)) * 0.5;
+      ctx.lineTo(x, hz - H * 0.02 - h * H * 0.16);
+    }
+    ctx.lineTo(W + seg, hz); ctx.closePath(); ctx.fill();
+    const g = ctx.createLinearGradient(0, hz - H * 0.1, 0, hz);     // foreground darkening haze
+    g.addColorStop(0, "rgba(232,116,46,0)"); g.addColorStop(1, "rgba(232,116,46,0.2)");
+    ctx.fillStyle = g; ctx.fillRect(0, hz - H * 0.1, W, H * 0.1);
+  }
+
+  // layer 2 — far tree line, factor 0.30, tiled twice minimum
+  function treeline(hz) {
+    const o = off(TREELINE), sp = 44, s = Math.floor(o / sp);
+    ctx.fillStyle = "#2c2238";
+    for (let k = -1; k < W / sp + 2; k++) {
+      const i = s + k, x = i * sp - o, h = 26 + rnd(i) * 24;
+      ctx.beginPath(); ctx.moveTo(x, hz - h);
+      ctx.lineTo(x - 10, hz + 2); ctx.lineTo(x + 10, hz + 2); ctx.closePath(); ctx.fill();
+    }
+  }
+
+  function ground(hz) {
+    ctx.fillStyle = "#3a2f26"; ctx.fillRect(0, hz, W, H - hz);     // verge
+    const rt = hz + (H - hz) * 0.3;
+    ctx.fillStyle = "#2b2a31"; ctx.fillRect(0, rt, W, H - rt);     // road
+    ctx.fillStyle = "rgba(255,160,90,0.12)"; ctx.fillRect(0, rt, W, 3);
+    const o = off(ROAD), p = 100, d = 60, y = rt + (H - rt) * 0.5;
+    ctx.fillStyle = "rgba(230,206,150,0.85)";
+    for (let x = -(o % p); x < W; x += p) ctx.fillRect(x, y - 2.5, d, 5);
+    return rt;
+  }
+
+  // layer 3 — roadside poles, factor 0.60, spaced ~220px
+  function poles(hz) {
+    const o = off(POLES), sp = 220, s = Math.floor(o / sp);
+    ctx.strokeStyle = "#241f2c"; ctx.lineWidth = 3;
+    for (let k = -1; k < W / sp + 2; k++) {
+      const i = s + k, x = i * sp - o, ph = 78;
+      ctx.beginPath(); ctx.moveTo(x, hz + 6); ctx.lineTo(x, hz + 6 - ph);
+      ctx.moveTo(x, hz + 6 - ph + 8); ctx.lineTo(x + 22, hz + 6 - ph + 14);
+      ctx.moveTo(x, hz + 6 - ph + 16); ctx.lineTo(x - 22, hz + 6 - ph + 22); ctx.stroke();
+    }
+  }
+
+  function car(rt) {
+    const cw = W * 0.28, ch = cw * 0.34, cx = W * 0.45;            // width 0.28W, center 0.45W
+    const gy = rt + (H - rt) * 0.46;
+    const bob = Math.sin(t * 2.5) * 2;                            // body bob: sin(t*2.5)*2 px
+    const wr = ch * 0.3;
+    ctx.save(); ctx.translate(cx, gy + bob);
+    ctx.fillStyle = "rgba(0,0,0,0.32)"; ctx.beginPath();
+    ctx.ellipse(0, wr * 0.95, cw * 0.5, wr * 0.4, 0, 0, 7); ctx.fill();
+    const L = -cw / 2, R = cw / 2, bb = wr * 0.35, bt = -ch * 0.52, rf = -ch * 1.02;
+    const bg = ctx.createLinearGradient(0, rf, 0, bb);
+    bg.addColorStop(0, "#b9532e"); bg.addColorStop(1, "#5a2414");  // warm body, lit by sunset
+    ctx.fillStyle = bg; ctx.beginPath();
+    ctx.moveTo(L, bb); ctx.lineTo(L, bt);
+    ctx.quadraticCurveTo(L + cw * 0.05, rf, L + cw * 0.2, rf);
+    ctx.lineTo(L + cw * 0.46, rf); ctx.quadraticCurveTo(L + cw * 0.55, rf, L + cw * 0.6, rf - 2);
+    ctx.lineTo(L + cw * 0.7, rf - 2); ctx.quadraticCurveTo(L + cw * 0.84, rf, L + cw * 0.9, bt);
+    ctx.lineTo(R, bt + 6); ctx.lineTo(R, bb); ctx.closePath(); ctx.fill();
+    // warm rim light from the sun (right side)
+    ctx.strokeStyle = "rgba(255,200,140,0.55)"; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.moveTo(L + cw * 0.7, rf - 2); ctx.quadraticCurveTo(L + cw * 0.84, rf, L + cw * 0.9, bt); ctx.stroke();
+    ctx.fillStyle = "rgba(150,180,205,0.3)"; ctx.beginPath();
+    ctx.moveTo(L + cw * 0.24, rf + 1); ctx.lineTo(L + cw * 0.46, rf - 1);
+    ctx.lineTo(L + cw * 0.58, rf - 1); ctx.lineTo(L + cw * 0.66, bt); ctx.lineTo(L + cw * 0.26, bt);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#ffe6a8"; ctx.beginPath(); ctx.ellipse(R - 6, bt * 0.3, 6, 5, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#cf3636"; ctx.beginPath(); ctx.ellipse(L + 6, bt * 0.25, 5, 4, 0, 0, 7); ctx.fill();
+    const wx = [L + cw * 0.24, L + cw * 0.76];
+    const ang = off(ROAD) / wr;                                   // angle += groundSpeed*dt/wheelRadius
+    for (const x of wx) {
+      ctx.fillStyle = "#0f1217"; ctx.beginPath(); ctx.arc(x, 0, wr + 3, 0, 7); ctx.fill();
+      ctx.fillStyle = "#15151b"; ctx.beginPath(); ctx.arc(x, 0, wr, 0, 7); ctx.fill();
+      ctx.save(); ctx.translate(x, 0); ctx.rotate(ang);
+      ctx.strokeStyle = "#aab0b8"; ctx.lineWidth = 2.5;
+      for (let s = 0; s < 6; s++) { ctx.beginPath(); ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(s) * wr * 0.6, Math.sin(s) * wr * 0.6); ctx.stroke(); }
+      ctx.fillStyle = "#c4cad1"; ctx.beginPath(); ctx.arc(0, 0, wr * 0.22, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  let last = performance.now();
+  function loop(now) {
+    let dt = (now - last) / 1000; last = now; if (dt > 0.05) dt = 0.05; t += dt;
+    const hz = H * 0.72;                                          // horizon at 0.72H
+    sky(hz); hills(hz); treeline(hz);
+    const rt = ground(hz); poles(hz); car(rt);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

@@ -17,6 +17,9 @@
 | run | harness | model | approach | дата | auto | vis(я) | vis(Дима) | total(я) | total(Дима) | rubric | заметки |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | hermes__deepseek-v4-pro__baseline | hermes | deepseek-v4-pro | baseline | 2026-06-25 | 10 | — | ✓ принят | 10 | — | v1 | КОНТРОЛЬ. 0 JS-ошибок (favicon 404 dev-сервера не в счёт); 6 слоёв параллакса; wrap бесшовный по коду. Дима: визуально принято (машина едет, сцена корректна). Числовые B-баллы — сравнительно, когда наберём прогоны на оси |
+| hermes__deepseek-v4-pro__criteria | hermes | deepseek-v4-pro | criteria | 2026-06-25 | 10 | — | _ждёт_ | 10 | — | v1 | 0 JS-ошибок; 6 слоёв; varied scenery (2 типа деревьев, птицы, кусты), dusk-палитра; wrap по коду бесшовный |
+| hermes__deepseek-v4-pro__constraints | hermes | deepseek-v4-pro | constraints | 2026-06-25 | 10 | — | _ждёт_ | 10 | — | v1 | 0 JS-ошибок; РОВНО 4 слоя по ТЗ (0.10/0.30/0.60/1.0); car 28%@45%, bob sin(t*2.5)*2, sun@0.72W; самый детерминированный по спеке |
+| hermes__deepseek-v4-pro__spiral | hermes | deepseek-v4-pro | spiral | 2026-06-25 | 10 | — | _ждёт_ | 10 | — | v1 | 0 JS-ошибок; 4 слоя, единый tile() helper (строжайшая бесшовность); код по 8 стадиям; самый чистый по структуре |
 
 ---
 

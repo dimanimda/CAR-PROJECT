@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Driving — dusk (spiral)</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #101522; }
+  #c { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+/* Approach: spiral. Built in the 8 verifiable stages from the prompt.
+   Each stage is a self-contained function; the loop composes them back-to-front.
+   Particular care on Stage 3: one tile() helper guarantees a perfectly seamless wrap,
+   reused by every scrolling layer. */
+(() => {
+  "use strict";
+
+  // ---- Stage 1: skeleton — full-page canvas, resize, rAF loop, delta-time ----
+  const cv = document.getElementById("c");
+  const ctx = cv.getContext("2d");
+  let W, H, DPR = Math.min(window.devicePixelRatio || 1, 2);
+  function resize() {
+    W = innerWidth; H = innerHeight;
+    cv.width = W * DPR; cv.height = H * DPR;
+    cv.style.width = W + "px"; cv.style.height = H + "px";
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  addEventListener("resize", resize); resize();
+  let t = 0;
+  const SPEED = 145;
+  const rnd = n => { const x = Math.sin(n * 78.233 + 12.9898) * 43758.545; return x - Math.floor(x); };
+
+  // Seamless tiling helper (the heart of Stage 3): draw `fn` for every tile index
+  // visible on screen, using the GLOBAL tile index so each tile keeps its identity
+  // across the wrap -> no jump, no flicker. Reused by all scrolling layers.
+  function tile(spacing, factor, fn) {
+    const o = t * SPEED * factor;
+    const first = Math.floor(o / spacing);
+    for (let k = -1; k < W / spacing + 2; k++) {
+      const i = first + k;
+      fn(i, i * spacing - o);          // (globalIndex, screenX)
+    }
+  }
+
+  // ---- Stage 2: sky — static dusk gradient + sun ----
+  function stageSky(hz) {
+    const g = ctx.createLinearGradient(0, 0, 0, hz);
+    g.addColorStop(0.00, "#1a2740");
+    g.addColorStop(0.50, "#4d3d68");
+    g.addColorStop(0.80, "#b06576");
+    g.addColorStop(1.00, "#eb9a5e");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, hz);
+    const sx = W * 0.7, sy = hz - H * 0.05, r = H * 0.07;
+    const gl = ctx.createRadialGradient(sx, sy, r * 0.4, sx, sy, r * 5);
+    gl.addColorStop(0, "rgba(255,228,176,0.55)"); gl.addColorStop(1, "rgba(255,228,176,0)");
+    ctx.fillStyle = gl; ctx.fillRect(0, 0, W, hz);
+    ctx.fillStyle = "#fff1c4"; ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7); ctx.fill();
+  }
+
+  // ---- Stage 4 (back): distant hills, slowest ----
+  function stageHills(hz) {
+    const seg = 78;
+    ctx.fillStyle = "#453a5d"; ctx.beginPath(); ctx.moveTo(-seg, hz + 2);
+    tile(seg, 0.12, (i, x) => {
+      const h = (rnd(i) + rnd(i * 0.4 + 7)) * 0.5;
+      ctx.lineTo(x, hz - H * 0.02 - h * H * 0.17);
+    });
+    ctx.lineTo(W + seg, hz + 2); ctx.closePath(); ctx.fill();
+  }
+
+  // ---- Stage 4 (mid): far tree line ----
+  function stageTrees(hz) {
+    tile(48, 0.34, (i, x) => {
+      const h = 26 + rnd(i) * 26;
+      ctx.fillStyle = "#27313f";
+      ctx.beginPath(); ctx.moveTo(x, hz - h);
+      ctx.lineTo(x - 10, hz + 3); ctx.lineTo(x + 10, hz + 3); ctx.closePath(); ctx.fill();
+    });
+  }
+
+  // ---- Stage 4 (front): roadside poles ----
+  function stagePoles(hz) {
+    ctx.strokeStyle = "#222531"; ctx.lineWidth = 3;
+    tile(210, 0.7, (i, x) => {
+      const ph = 74;
+      ctx.beginPath(); ctx.moveTo(x, hz + 5); ctx.lineTo(x, hz + 5 - ph);
+      ctx.moveTo(x, hz + 5 - ph + 8); ctx.lineTo(x + 20, hz + 5 - ph + 13); ctx.stroke();
+    });
+  }
+
+  // ---- Stage 3: the ground/road — first scrolling layer, seamless ----
+  function stageGround(hz) {
+    ctx.fillStyle = "#342c25"; ctx.fillRect(0, hz, W, H - hz);
+    const rt = hz + (H - hz) * 0.3;
+    ctx.fillStyle = "#292931"; ctx.fillRect(0, rt, W, H - rt);
+    ctx.fillStyle = "rgba(255,165,110,0.1)"; ctx.fillRect(0, rt, W, 3);
+    const y = rt + (H - rt) * 0.5;
+    ctx.fillStyle = "rgba(228,206,150,0.85)";
+    tile(100, 1.0, (i, x) => ctx.fillRect(x, y - 2, 60, 4));   // dashes via same seamless tiler
+    return rt;
+  }
+
+  // ---- Stages 5–7: the car (silhouette, then wheels, then bob) ----
+  function stageCar(rt) {
+    const cw = Math.max(220, W * 0.27), ch = cw * 0.33, cx = W * 0.44;
+    const gy = rt + (H - rt) * 0.46;
+    const bob = Math.sin(t * 7.2) * 1.5;          // Stage 7
+    const tilt = Math.sin(t * 4.8) * 0.006;
+    const wr = ch * 0.3;
+    ctx.save(); ctx.translate(cx, gy + bob); ctx.rotate(tilt);
+    ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath();
+    ctx.ellipse(0, wr * 0.95, cw * 0.5, wr * 0.4, 0, 0, 7); ctx.fill();
+    // Stage 5 — silhouette/body
+    const L = -cw / 2, R = cw / 2, bb = wr * 0.35, bt = -ch * 0.52, rf = -ch * 1.03;
+    const bg = ctx.createLinearGradient(0, rf, 0, bb);
+    bg.addColorStop(0, "#43618c"); bg.addColorStop(1, "#1d2c3f");
+    ctx.fillStyle = bg; ctx.beginPath();
+    ctx.moveTo(L, bb); ctx.lineTo(L, bt);
+    ctx.quadraticCurveTo(L + cw * 0.05, rf + 2, L + cw * 0.24, rf);
+    ctx.lineTo(L + cw * 0.66, rf); ctx.quadraticCurveTo(L + cw * 0.84, rf + 2, L + cw * 0.9, bt);
+    ctx.lineTo(R, bt + 5); ctx.lineTo(R, bb); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "rgba(255,190,125,0.5)"; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.moveTo(L + cw * 0.24, rf); ctx.lineTo(L + cw * 0.66, rf); ctx.stroke();
+    ctx.fillStyle = "rgba(150,182,205,0.32)"; ctx.beginPath();
+    ctx.moveTo(L + cw * 0.28, bt); ctx.lineTo(L + cw * 0.34, rf + 5);
+    ctx.lineTo(L + cw * 0.6, rf + 5); ctx.lineTo(L + cw * 0.66, bt); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#ffe7ac"; ctx.beginPath(); ctx.ellipse(R - 5, bt * 0.25, 6, 5, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#d23b3b"; ctx.beginPath(); ctx.ellipse(L + 6, bt * 0.2, 5, 4, 0, 0, 7); ctx.fill();
+    // Stage 6 — wheels rotating with the ground
+    const wx = [L + cw * 0.25, L + cw * 0.75], ang = (t * SPEED * 1.0) / wr;
+    for (const x of wx) {
+      ctx.fillStyle = "#101319"; ctx.beginPath(); ctx.arc(x, 0, wr + 3, 0, 7); ctx.fill();
+      ctx.fillStyle = "#16161c"; ctx.beginPath(); ctx.arc(x, 0, wr, 0, 7); ctx.fill();
+      ctx.save(); ctx.translate(x, 0); ctx.rotate(ang);
+      ctx.strokeStyle = "#9aa3ad"; ctx.lineWidth = 2.5;
+      for (let s = 0; s < 6; s++) { ctx.beginPath(); ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(s) * wr * 0.62, Math.sin(s) * wr * 0.62); ctx.stroke(); }
+      ctx.fillStyle = "#c2c8cf"; ctx.beginPath(); ctx.arc(0, 0, wr * 0.22, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // ---- Stage 8: polish — atmospheric haze tying scene to the light ----
+  function stageHaze(hz) {
+    const g = ctx.createLinearGradient(0, hz - H * 0.1, 0, hz + H * 0.02);
+    g.addColorStop(0, "rgba(255,165,105,0)"); g.addColorStop(1, "rgba(255,165,105,0.2)");
+    ctx.fillStyle = g; ctx.fillRect(0, hz - H * 0.1, W, H * 0.12);
+  }
+
+  let last = performance.now();
+  function loop(now) {
+    let dt = (now - last) / 1000; last = now; if (dt > 0.05) dt = 0.05; t += dt;
+    const hz = H * 0.7;
+    stageSky(hz);          // 2
+    stageHills(hz);        // 4 back
+    stageTrees(hz);        // 4 mid
+    stageHaze(hz);         // 8
+    const rt = stageGround(hz);  // 3
+    stagePoles(hz);        // 4 front
+    stageCar(rt);          // 5,6,7
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

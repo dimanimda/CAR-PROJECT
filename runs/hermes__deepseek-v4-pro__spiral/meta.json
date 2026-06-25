@@ -1,0 +1,16 @@
+{
+  "run": "hermes__deepseek-v4-pro__spiral",
+  "harness": "hermes",
+  "model": "deepseek-v4-pro",
+  "approach": "spiral",
+  "prompt_file": "prompts/03-spiral.md",
+  "date": "2026-06-25",
+  "method": "single-pass, staged build per the 8-stage decomposition; one shared seamless tile() helper reused by every scrolling layer (Stage 3 emphasis)",
+  "iterations": 1,
+  "gen_time_sec": null,
+  "console": "0 entries (BrowserOS page 7 totalCount 0) — no JS errors/warnings.",
+  "auto_score": 10,
+  "parallax_layers": 4,
+  "layer_factors": {"hills": 0.12, "trees": 0.34, "poles": 0.70, "road": 1.0},
+  "notes": "Spiral-driven: code organized as explicit Stage 1-8 functions; single tile() helper guarantees seam correctness across all layers (strictest seam approach)."
+}

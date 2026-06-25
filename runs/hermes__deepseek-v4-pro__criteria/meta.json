@@ -1,0 +1,16 @@
+{
+  "run": "hermes__deepseek-v4-pro__criteria",
+  "harness": "hermes",
+  "model": "deepseek-v4-pro",
+  "approach": "criteria",
+  "prompt_file": "prompts/01-criteria.md",
+  "date": "2026-06-25",
+  "method": "single-pass, self-verified against the 10 acceptance criteria embedded in the prompt",
+  "iterations": 1,
+  "gen_time_sec": null,
+  "console": "0 entries (BrowserOS page 5 totalCount 0) — no JS errors/warnings.",
+  "auto_score": 10,
+  "parallax_layers": 6,
+  "layer_factors": {"birds": 0.08, "mountains": 0.15, "hills": 0.30, "trees": 0.50, "bushes": 0.75, "road": 1.0},
+  "notes": "Criteria-driven: explicit coverage of all 10 checklist items; varied scenery (two tree types, birds, bushes), dusk palette. Seam code-verified (index wrap)."
+}
