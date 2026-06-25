@@ -1,0 +1,16 @@
+{
+  "run": "hermes__deepseek-v4-pro__baseline",
+  "harness": "hermes",
+  "model": "deepseek-v4-pro",
+  "approach": "baseline",
+  "prompt_file": "prompts/00-baseline.md",
+  "date": "2026-06-25",
+  "method": "single-pass one-shot; no rubric self-review, no staged decomposition, no added constraints",
+  "iterations": 1,
+  "gen_time_sec": null,
+  "console": "0 JS errors / warnings on the page itself (BrowserOS totalCount 0). The single error playwright reported on navigate was favicon.ico 404 from the local http.server dev host, unrelated to the artifact (the page makes no network requests).",
+  "auto_score": 10,
+  "parallax_layers": 6,
+  "layer_factors": {"clouds": 0.04, "far_hills": 0.12, "mid_hills": 0.24, "tree_line": 0.42, "poles": 0.78, "road": 1.0},
+  "notes": "Control / zero point. Hermes native (no external harness), current model, raw baseline prompt. Seamless loop is code-verified (modulo / global-index wrap on every layer); visual seam confirmation left to review."
+}
